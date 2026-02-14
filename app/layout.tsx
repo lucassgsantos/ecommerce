@@ -21,7 +21,7 @@ export default function RootLayout({
         </main>
         <footer className="bg-gray-900 text-white mt-16 py-8">
           <div className="max-w-6xl mx-auto px-4 text-center">
-            <p>&copy; 2024 ShopHub. All rights reserved.</p>
+            <p>&copy; 2026 ShopHub. Todos os direitos reservados.</p>
           </div>
         </footer>
       </body>

@@ -51,7 +51,7 @@ export default function OrderConfirmation({ params }: { params: { id: string } }
           </div>
           <div>
             <p className="text-gray-600 text-sm">Total</p>
-            <p className="font-semibold text-2xl">${order.total.toFixed(2)}</p>
+            <p className="font-semibold text-2xl">R$ {order.total.toFixed(2)}</p>
           </div>
         </div>
       </div>
@@ -75,7 +75,7 @@ export default function OrderConfirmation({ params }: { params: { id: string } }
                 <p className="font-semibold">{item.product.name}</p>
                 <p className="text-gray-600 text-sm">Quantidade: {item.quantity}</p>
               </div>
-              <p className="font-semibold">${item.price.toFixed(2)}</p>
+              <p className="font-semibold">R$ {item.price.toFixed(2)}</p>
             </div>
           ))}
         </div>

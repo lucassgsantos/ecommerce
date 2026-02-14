@@ -72,7 +72,7 @@ export default function ProductDetails({ params }: { params: { id: string } }) {
             <p className="text-gray-500 mb-2">Categoria: {product.category}</p>
             <p className="text-gray-500 mb-4">Stock: {product.stock}</p>
             <p className="text-4xl font-bold text-blue-600 mb-6">
-              ${product.price.toFixed(2)}
+              R$ {product.price.toFixed(2)}
             </p>
           </div>
 

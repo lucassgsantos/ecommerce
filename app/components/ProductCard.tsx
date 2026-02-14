@@ -23,7 +23,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
         <p className="text-gray-600 text-sm mb-2 line-clamp-2">{product.description}</p>
         <div className="flex justify-between items-center mb-3">
           <span className="text-2xl font-bold text-blue-600">
-            ${product.price.toFixed(2)}
+            R$ {product.price.toFixed(2)}
           </span>
           <span className="text-sm text-gray-500">Stock: {product.stock}</span>
         </div>
