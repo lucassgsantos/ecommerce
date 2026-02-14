@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 model Product {
@@ -12,7 +12,7 @@ model Product {
   name      String
   description String
   price     Float
-  image     String
+  image     String  @default("")
   stock     Int
   category  String
   createdAt DateTime @default(now())
