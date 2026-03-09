@@ -1,12 +1,17 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { CartItem } from '@/types'
+import { useSession } from 'next-auth/react'
+import Link from 'next/link'
+import { useCart } from '../components/CartContext'
+import { useToast } from '../components/Toast'
 
 export default function CheckoutPage() {
   const router = useRouter()
-  const [items, setItems] = useState<CartItem[]>([])
+  const { data: session, status: sessionStatus } = useSession()
+  const { items, total, clearCart } = useCart()
+  const { showToast } = useToast()
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     customerName: '',
@@ -15,18 +20,38 @@ export default function CheckoutPage() {
     customerAddress: '',
   })
 
-  useEffect(() => {
-    const cart = JSON.parse(localStorage.getItem('cart') || '[]')
-    if (cart.length === 0) {
-      router.push('/cart')
-      return
-    }
-    setItems(cart)
-  }, [router])
+  if (sessionStatus === 'loading') {
+    return (
+      <div className="max-w-[720px] mx-auto">
+        <div className="animate-pulse space-y-6">
+          <div className="h-6 bg-[#f5f5f7] rounded w-32" />
+          <div className="h-64 bg-[#f5f5f7] rounded-2xl" />
+        </div>
+      </div>
+    )
+  }
+
+  if (sessionStatus === 'unauthenticated') {
+    return (
+      <div className="text-center py-20">
+        <p className="text-[#6e6e73] mb-6">Faça login para finalizar sua compra.</p>
+        <Link
+          href="/login"
+          className="inline-block bg-[#0071e3] text-white text-sm font-medium px-6 py-2.5 rounded-full hover:bg-[#0077ed] transition-colors"
+        >
+          Entrar
+        </Link>
+      </div>
+    )
+  }
+
+  if (items.length === 0) {
+    router.push('/cart')
+    return null
+  }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -34,8 +59,6 @@ export default function CheckoutPage() {
     setLoading(true)
 
     try {
-      const total = items.reduce((sum, item) => sum + item.product.price * item.quantity, 0)
-
       const response = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -44,110 +67,104 @@ export default function CheckoutPage() {
           items: items.map((item) => ({
             productId: item.product.id,
             quantity: item.quantity,
-            price: item.product.price,
           })),
-          total,
         }),
       })
 
       if (response.ok) {
         const order = await response.json()
-        localStorage.removeItem('cart')
+        clearCart()
+        showToast('Pedido realizado com sucesso!')
         router.push(`/order-confirmation/${order.id}`)
+      } else {
+        const error = await response.json()
+        showToast(error.error || 'Erro ao processar pedido', 'error')
       }
     } catch (error) {
-      console.error('Checkout error:', error)
-      alert('Erro ao processar pedido')
+      showToast('Erro de conexão', 'error')
     } finally {
       setLoading(false)
     }
   }
 
-  const total = items.reduce((sum, item) => sum + item.product.price * item.quantity, 0)
-
   return (
-    <div>
-      <h1 className="text-4xl font-bold mb-8">Checkout</h1>
+    <div className="max-w-[720px] mx-auto">
+      <h1 className="text-3xl font-semibold tracking-tight text-[#1d1d1f] mb-8">Checkout</h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <div className="md:col-span-2">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-semibold mb-2">Nome Completo</label>
-              <input
-                type="text"
-                name="customerName"
-                value={formData.customerName}
-                onChange={handleInputChange}
-                required
-                className="w-full border rounded px-4 py-2"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold mb-2">Email</label>
-              <input
-                type="email"
-                name="customerEmail"
-                value={formData.customerEmail}
-                onChange={handleInputChange}
-                required
-                className="w-full border rounded px-4 py-2"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold mb-2">Telefone</label>
-              <input
-                type="tel"
-                name="customerPhone"
-                value={formData.customerPhone}
-                onChange={handleInputChange}
-                required
-                className="w-full border rounded px-4 py-2"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold mb-2">Endereço de Entrega</label>
-              <input
-                type="text"
-                name="customerAddress"
-                value={formData.customerAddress}
-                onChange={handleInputChange}
-                required
-                className="w-full border rounded px-4 py-2"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg disabled:opacity-50"
-            >
-              {loading ? 'Processando...' : 'Confirmar Pedido'}
-            </button>
-          </form>
+      <form onSubmit={handleSubmit} className="space-y-5 mb-10">
+        <div>
+          <label className="block text-xs font-medium text-[#6e6e73] mb-1.5 uppercase tracking-wider">
+            Nome Completo
+          </label>
+          <input
+            type="text"
+            name="customerName"
+            value={formData.customerName}
+            onChange={handleInputChange}
+            required
+            className="w-full px-4 py-3 bg-[#f5f5f7] rounded-xl text-sm border-0"
+          />
         </div>
 
-        <div className="bg-gray-100 rounded-lg p-6 h-fit">
-          <h2 className="text-xl font-bold mb-4">Resumo do Pedido</h2>
-          <div className="space-y-3 mb-4">
+        <div>
+          <label className="block text-xs font-medium text-[#6e6e73] mb-1.5 uppercase tracking-wider">Email</label>
+          <input
+            type="email"
+            name="customerEmail"
+            value={formData.customerEmail}
+            onChange={handleInputChange}
+            required
+            className="w-full px-4 py-3 bg-[#f5f5f7] rounded-xl text-sm border-0"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-[#6e6e73] mb-1.5 uppercase tracking-wider">Telefone</label>
+          <input
+            type="tel"
+            name="customerPhone"
+            value={formData.customerPhone}
+            onChange={handleInputChange}
+            required
+            className="w-full px-4 py-3 bg-[#f5f5f7] rounded-xl text-sm border-0"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-[#6e6e73] mb-1.5 uppercase tracking-wider">
+            Endereço de Entrega
+          </label>
+          <input
+            type="text"
+            name="customerAddress"
+            value={formData.customerAddress}
+            onChange={handleInputChange}
+            required
+            className="w-full px-4 py-3 bg-[#f5f5f7] rounded-xl text-sm border-0"
+          />
+        </div>
+
+        <div className="border-t border-[#d2d2d7]/40 pt-6 mt-8">
+          <div className="flex justify-between mb-4">
             {items.map((item) => (
-              <div key={item.productId} className="flex justify-between text-sm">
-                <span>{item.product.name} x {item.quantity}</span>
-                <span>R$ {(item.product.price * item.quantity).toFixed(2)}</span>
-              </div>
+              <div key={item.productId} />
             ))}
           </div>
-          <div className="border-t pt-4">
-            <div className="flex justify-between text-xl font-bold">
-              <span>Total:</span>
-              <span>R$ {total.toFixed(2)}</span>
-            </div>
+          <div className="flex justify-between items-center mb-6">
+            <span className="text-sm text-[#6e6e73]">Total</span>
+            <span className="text-xl font-semibold">
+              R$ {total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </span>
           </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-[#0071e3] text-white text-sm font-medium py-3.5 rounded-full hover:bg-[#0077ed] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading ? 'Processando...' : 'Confirmar Pedido'}
+          </button>
         </div>
-      </div>
+      </form>
     </div>
   )
 }

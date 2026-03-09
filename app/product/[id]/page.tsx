@@ -1,103 +1,116 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import Link from 'next/link'
 import { Product } from '@/types'
+import { useCart } from '../../components/CartContext'
+import { useToast } from '../../components/Toast'
+import { ProductDetailsSkeleton } from '../../components/Skeleton'
 
-export default function ProductDetails({ params }: { params: { id: string } }) {
+export default function ProductPage({ params }: { params: { id: string } }) {
   const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
   const [quantity, setQuantity] = useState(1)
+  const { addToCart } = useCart()
+  const { showToast } = useToast()
+  const router = useRouter()
 
   useEffect(() => {
-    fetchProduct()
+    fetch(`/api/products/${params.id}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => setProduct(data))
+      .finally(() => setLoading(false))
   }, [params.id])
 
-  const fetchProduct = async () => {
-    try {
-      const response = await fetch(`/api/products?id=${params.id}`)
-      const data = await response.json()
-      setProduct(data)
-    } catch (error) {
-      console.error('Failed to fetch product:', error)
-    } finally {
-      setLoading(false)
-    }
+  if (loading) return <ProductDetailsSkeleton />
+
+  if (!product) {
+    return (
+      <div className="text-center py-20">
+        <p className="text-[#6e6e73] mb-6">Produto não encontrado.</p>
+        <Link
+          href="/"
+          className="text-sm text-[#0071e3] hover:opacity-70 transition-opacity"
+        >
+          ← Voltar aos produtos
+        </Link>
+      </div>
+    )
   }
 
   const handleAddToCart = () => {
-    if (!product) return
-
-    const cart = JSON.parse(localStorage.getItem('cart') || '[]')
-    const existingItem = cart.find((item: any) => item.productId === product.id)
-
-    if (existingItem) {
-      existingItem.quantity += quantity
-    } else {
-      cart.push({
-        productId: product.id,
-        quantity,
-        product,
-      })
+    for (let i = 0; i < quantity; i++) {
+      addToCart(product)
     }
-
-    localStorage.setItem('cart', JSON.stringify(cart))
-    window.dispatchEvent(new Event('storage'))
-    alert('Produto adicionado ao carrinho!')
+    showToast(`${product.name} adicionado ao carrinho`)
   }
-
-  if (loading) return <div className="text-center py-12">Carregando...</div>
-  if (!product) return <div className="text-center py-12">Produto não encontrado</div>
 
   return (
     <div>
-      <Link href="/" className="text-blue-600 hover:underline mb-6 inline-block">
-        ← Voltar
+      <Link
+        href="/"
+        className="text-sm text-[#0071e3] hover:opacity-70 transition-opacity inline-block mb-8"
+      >
+        ← Produtos
       </Link>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="bg-gray-200 h-96 rounded-lg flex items-center justify-center">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+        <div className="aspect-square bg-[#f5f5f7] rounded-2xl overflow-hidden relative">
           {product.image ? (
-            <img src={product.image} alt={product.name} className="w-full h-full object-cover rounded-lg" />
+            <Image
+              src={product.image}
+              alt={product.name}
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, 50vw"
+              priority
+            />
           ) : (
-            <span className="text-gray-400">No Image</span>
+            <div className="w-full h-full flex items-center justify-center text-[#86868b]">
+              Sem imagem
+            </div>
           )}
         </div>
 
-        <div>
-          <h1 className="text-3xl font-bold mb-4">{product.name}</h1>
-          <p className="text-gray-600 mb-6">{product.description}</p>
+        <div className="pt-2">
+          <p className="text-xs text-[#6e6e73] uppercase tracking-wider mb-2">{product.category}</p>
+          <h1 className="text-3xl font-semibold tracking-tight text-[#1d1d1f] mb-3">{product.name}</h1>
+          <p className="text-[#6e6e73] text-base leading-relaxed mb-6">{product.description}</p>
 
-          <div className="mb-6">
-            <p className="text-gray-500 mb-2">Categoria: {product.category}</p>
-            <p className="text-gray-500 mb-4">Stock: {product.stock}</p>
-            <p className="text-4xl font-bold text-blue-600 mb-6">
-              R$ {product.price.toFixed(2)}
-            </p>
-          </div>
+          <p className="text-2xl font-semibold text-[#1d1d1f] mb-1">
+            R$ {product.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+          </p>
+          <p className="text-xs text-[#86868b] mb-8">
+            {product.stock > 0 ? `${product.stock} em estoque` : 'Esgotado'}
+          </p>
 
-          {product.stock > 0 ? (
-            <div className="space-y-4">
-              <div className="flex items-center gap-4">
-                <label className="font-semibold">Quantidade:</label>
-                <input
-                  type="number"
-                  min="1"
-                  max={product.stock}
-                  value={quantity}
-                  onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value)))}
-                  className="border rounded px-3 py-2 w-24"
-                />
+          {product.stock > 0 && (
+            <>
+              <div className="flex items-center gap-4 mb-6">
+                <button
+                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                  className="w-8 h-8 rounded-full bg-[#f5f5f7] flex items-center justify-center text-sm hover:bg-[#e8e8ed] transition-colors"
+                >
+                  −
+                </button>
+                <span className="text-sm font-medium w-6 text-center">{quantity}</span>
+                <button
+                  onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
+                  className="w-8 h-8 rounded-full bg-[#f5f5f7] flex items-center justify-center text-sm hover:bg-[#e8e8ed] transition-colors"
+                >
+                  +
+                </button>
               </div>
+
               <button
                 onClick={handleAddToCart}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg"
+                className="w-full bg-[#0071e3] text-white text-sm font-medium py-3.5 rounded-full hover:bg-[#0077ed] transition-colors"
               >
                 Adicionar ao Carrinho
               </button>
-            </div>
-          ) : (
-            <p className="text-red-600 font-semibold">Produto fora de estoque</p>
+            </>
           )}
         </div>
       </div>

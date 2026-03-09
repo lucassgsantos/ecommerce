@@ -1,10 +1,10 @@
 import type { Metadata } from 'next'
-import { Header } from './components/Header'
+import { Providers } from './components/Providers'
 import './globals.css'
 
 export const metadata: Metadata = {
   title: 'ShopHub - E-commerce',
-  description: 'Sua loja online favorita',
+  description: 'Sua loja online favorita com os melhores produtos e preços',
 }
 
 export default function RootLayout({
@@ -14,16 +14,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR">
-      <body className="bg-gray-50">
-        <Header />
-        <main className="max-w-6xl mx-auto px-4 py-8">
+      <body className="bg-gray-50 min-h-screen flex flex-col">
+        <Providers>
           {children}
-        </main>
-        <footer className="bg-gray-900 text-white mt-16 py-8">
-          <div className="max-w-6xl mx-auto px-4 text-center">
-            <p>&copy; 2026 ShopHub. Todos os direitos reservados.</p>
-          </div>
-        </footer>
+        </Providers>
       </body>
     </html>
   )
